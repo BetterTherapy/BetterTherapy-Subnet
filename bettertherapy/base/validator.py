@@ -28,13 +28,13 @@ import bittensor as bt
 from typing import List, Union
 from traceback import print_exception
 
-from template.base.neuron import BaseNeuron
-from template.base.utils.weight_utils import (
+from bettertherapy.base.neuron import BaseNeuron
+from bettertherapy.base.utils.weight_utils import (
     process_weights_for_netuid,
     convert_weights_and_uids_for_emit,
 )  # TODO: Replace when bittensor switches to numpy
-from template.mock import MockDendrite
-from template.utils.config import add_validator_args
+from bettertherapy.mock import MockDendrite
+from bettertherapy.utils.config import add_validator_args
 
 
 class BaseValidatorNeuron(BaseNeuron):
@@ -321,6 +321,7 @@ class BaseValidatorNeuron(BaseNeuron):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""
 
         # Check if rewards contains NaN values.
+
         if np.isnan(rewards).any():
             bt.logging.warning(f"NaN values detected in rewards: {rewards}")
             # Replace any NaN values in rewards with 0.
@@ -330,25 +331,47 @@ class BaseValidatorNeuron(BaseNeuron):
         rewards = np.asarray(rewards)
 
         # Check if `uids` is already a numpy array and copy it to avoid the warning.
+
         if isinstance(uids, np.ndarray):
             uids_array = uids.copy()
         else:
             uids_array = np.array(uids)
 
         # Handle edge case: If either rewards or uids_array is empty.
-        if rewards.size == 0 or uids_array.size == 0:
-            bt.logging.info(f"rewards: {rewards}, uids_array: {uids_array}")
-            bt.logging.warning(
-                "Either rewards or uids_array is empty. No updates will be performed."
-            )
+        if not len(rewards) or not len(uids):
+            bt.logging.warning("No rewards or uids provided. Skipping update.")
             return
+        
+         # Convert rewards to a numpy array and handle NaN values.
+    rewards = np.asarray(rewards)
+    if np.isnan(rewards).any():
+        bt.logging.warning(f"NaN values detected in rewards: {rewards}")
+        rewards = np.nan_to_num(rewards, nan=0)
 
-        # Check if sizes of rewards and uids_array match.
-        if rewards.size != uids_array.size:
-            raise ValueError(
-                f"Shape mismatch: rewards array of shape {rewards.shape} "
-                f"cannot be broadcast to uids array of shape {uids_array.shape}"
-            )
+    # Convert uids to a numpy array, copying if already a numpy array.
+    uids_array = np.array(uids, copy=True)
+
+    # Check if sizes of rewards and uids_array match.
+    if len(rewards) != len(uids_array):
+        raise ValueError(
+            f"Shape mismatch: rewards array of shape {rewards.shape} "
+            f"cannot be broadcast to uids array of shape {uids_array.shape}"
+        )
+     # Expand scores array if uids exceed current size.
+    max_uid = np.max(uids_array)
+    if max_uid >= len(self.scores):
+        old_size = len(self.scores)
+        new_size = max_uid + 1
+        bt.logging.info(
+            f"Expanding scores from {old_size} to {new_size} to accommodate new uids."
+        )
+        new_scores = np.zeros(new_size)
+        new_scores[:old_size] = self.scores
+        self.scores = new_scores
+
+        
+
+            
 
         # Compute forward pass rewards, assumes uids are mutually exclusive.
         # shape: [ metagraph.n ]
@@ -369,6 +392,7 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.info("Saving validator state.")
 
         # Save the state of the validator to file.
+
         np.savez(
             self.config.neuron.full_path + "/state.npz",
             step=self.step,
@@ -381,6 +405,7 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.info("Loading validator state.")
 
         # Load the state of the validator from file.
+
         state = np.load(self.config.neuron.full_path + "/state.npz")
         self.step = state["step"]
         self.scores = state["scores"]
