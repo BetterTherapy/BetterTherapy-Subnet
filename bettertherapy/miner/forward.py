@@ -4,21 +4,36 @@ import time
 from neurons.miner import Miner
 import bettertherapy
 from bettertherapy.protocol import BetterTherapySynapse
+from bettertherapy.miner.inference import TherapyResponseSchema, TherapyInference
 import bittensor as bt
 
 miner_preds = {}
-base_model = None  # basemodel
+inference_engine = TherapyInference()
 
-def get_overall_score(response_text: str, process_time: float, user_rating: float = 1.0):
-    # Simulated scoring: accuracy, speed , user rating
-    accuracy = len(response_text) / 100.0 if response_text else 0.0
-    speed_score = 1.0 / (process_time + 1e-5)  # Avoid division by zero
-    overall_score = (0.5 * accuracy) + (0.3 * speed_score) + (0.2 * user_rating)
-    return round(overall_score * 100, 2)  # Scale to 100 for consistency
+def get_overall_score(ai_response: TherapyResponseSchema, process_time: float):
+    """Compute overall score based on breakdown, speed, and user rating."""
+    if isinstance(ai_response, TherapyResponseSchema):
+        breakdown = ai_response.breakdown
+        user_rating = ai_response.user_rating
+    else:
+        return 0.0
+    weights = {
+        "relevance": 3,
+        "accuracy": 2,
+        "empathy": 2,
+        "clarity": 1.5,
+        "contextuality": 1.5
+    }
+    field_names = ["relevance", "accuracy", "empathy", "clarity", "contextuality"]
+    scores = {field: getattr(breakdown, field) for field in field_names}
+    breakdown_score = sum(float(scores[key]) * weights[key] for key in scores) / 10  # Normalize to 0-10
+    speed_score = 1.0 / (process_time + 1e-5)  # Inverse time for speed
+    overall_score = (0.6 * breakdown_score) + (0.2 * speed_score) + (0.2 * user_rating)
+    return round(overall_score * 10, 2)  # Scale to 100
 
 async def forward(self: Miner, synapse: BetterTherapySynapse):
     """
-    Asynchronously process user queries using a fine-tuned medical model.
+    Asynchronously process user queries using the fine-tuned medical model.
     Uses caching to avoid redundant inference.
     """
     bt.logging.info(f"Received mine requests for queries {synapse.messages}")
@@ -35,7 +50,7 @@ async def forward(self: Miner, synapse: BetterTherapySynapse):
             predictions[i] = miner_preds[query_id]
         else:
             query_ids.append((i, query_id))
-            tasks.append(self.infer_response(message["content"], synapse.chat_history))
+            tasks.append(inference_engine.generate_therapy_response(message["content"], synapse.chat_history))
 
     bt.logging.info("Running inference tasks...")
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -46,29 +61,13 @@ async def forward(self: Miner, synapse: BetterTherapySynapse):
         try:
             if isinstance(result, Exception):
                 raise result
-            response_text = result
-            score = get_overall_score(response_text, process_time)
-            predictions[i] = {"response": response_text, "score": score}
+            score = get_overall_score(result, process_time)
+            predictions[i] = {"response": result.response_text, "score": score}
             miner_preds[query_id] = predictions[i]  # Save to cache
-            bt.logging.info(f"Response for query {query_id}: {response_text} (Score: {score})")
+            bt.logging.info(f"Response for query {query_id}: {result.response_text} (Score: {score})")
         except Exception as e:
             bt.logging.error(f"Error processing query {query_id}: {e}")
             predictions[i] = None
 
     synapse.output = predictions
     return synapse
-
-async def infer_response(self, query: str, chat_history: list):
-    """
-    Simulate inference using the fine-tuned medical model.
-    Placeholder for actual model inference logic.
-    """
-    global base_model
-    if base_model is None:
-        # Simulate model (e.g., from miner-shared resources)
-        base_model = "medical_exam_model_v1"  # basemodel
-
-    #generate response based on chat history
-    history_context = " ".join([msg["content"] for msg in chat_history]) if chat_history else "No prior context"
-    response = f"Dr. AI: Response to '{query}' - Based on history ({history_context}), I recommend a therapy session or medical review."
-    return response
