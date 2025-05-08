@@ -48,9 +48,9 @@ This subnet uses Bittensor’s infrastructure to incentivize the best-performing
 
 #### Example Workflow:
 1. **Dr. Indra Gurung** is onboarded to the subnet.
-2. A base LLM (pretrained on medical exams) is fine-tuned with Dr. Indra’s expertise daily.
-3. Users select “Dr. Indra AI” and ask personalized health questions.
-4. Validators evaluate the miner responses for clarity, medical accuracy, and user satisfaction.
+2. A base LLM (pretrained on medical exams) is fine-tuned with Doctors' expertise daily.
+3. Users select “Dr.  AI” and ask personalized health questions.
+4. Validators evaluate the miner's responses for clarity, medical accuracy, and user satisfaction.
 5. Top miners receive rewards for fine-tuning and inference.
 6. Ratings and usage are used to improve each twin continuously.
 
@@ -61,7 +61,7 @@ This subnet uses Bittensor’s infrastructure to incentivize the best-performing
 ### Before You Proceed
 
 You’ll need:
-- A wallet and TAO balance (to register subnet or join as miner/validator).
+- A wallet and TAO balance (to register a subnet or join as a miner/validator).
 - System resources meeting [`min_compute.yml`](./min_compute.yml) requirements.
 - CUDA-compatible GPU (for model inference).
 
@@ -78,9 +78,9 @@ You’ll need:
 Miners host and fine-tune the **Doctor AI Twins**, based on real doctors’ daily interaction with real patients.
 
 ### Responsibilities:
-- Serve AI responses via fine-tuned LLMs (e.g. Med-BERT, Llama3-Med).
+- Serve AI responses via fine-tuned LLMs.
 - Fine-tune the model daily using data (interaction between doctors & patients) provided by real doctors.
-- Handle real-time user queries routed to specific doctor.
+- Handle real-time user queries routed to a specific doctor.
 - Perform inference using:
   - Chat history analysis
   - User feedback
@@ -91,7 +91,7 @@ Miners host and fine-tune the **Doctor AI Twins**, based on real doctors’ dail
 
 ### 🔁 Inference & Feedback Flow:
 
-1. User asks query** → Routed to **Dr. Indra (AI)**  
+1. User asks query** → Routed to **Doctors (AI)**  
 2. Miner performs inference** → Analyzes chat context and response candidates  
 3. Best response** is selected and served to the user  
 4. User rates the session
@@ -105,7 +105,7 @@ Miners host and fine-tune the **Doctor AI Twins**, based on real doctors’ dail
 - User satisfaction scores
 - Participation in doctor-led fine-tuning sessions
 
-> Miners contribute not only computing power, but also help build each AI doctor twin's memory, accuracy, and trust.
+> Miners contribute computing power and help build each AI doctor twin's memory, accuracy, and trust.
 
 ---
 
@@ -116,15 +116,15 @@ Validators act as **medical-grade QA systems** and reward miners.
 ### Responsibilities:
 - Route user queries to miners running a selected AI doctor twin.
 - Verify and compare multiple responses using:
-  - Medical resource lookup (e.g., WebMD, UpToDate, Mayo Clinic)
-  - Accuracy checks using APIs
+  - Medical resource lookup 
+  - Accuracy checks 
   - Session rating by users
 - Assign scores and rank miners per batch
 - Distribute reward and fine-tuning tasks to miners based on performance
 
 ### Validator Reward Criteria:
 - Fair scoring mechanisms
-- Validation accuracy (cross-referenced with gold answers, APIs)
+- Validation accuracy 
 - Task distribution quality to miners
 
 ```
