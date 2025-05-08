@@ -1,14 +1,14 @@
 import asyncio
 import time
 
-from neurons.miner import Miner
+# from neurons.miner import Miner
 import bettertherapy
 from bettertherapy.protocol import BetterTherapySynapse
 from bettertherapy.miner.inference import TherapyResponseSchema, TherapyInference
 import bittensor as bt
 
-miner_preds = {}
-inference_engine = TherapyInference()
+# miner_preds = {}
+# inference_engine = TherapyInference()
 
 def get_overall_score(ai_response: TherapyResponseSchema, process_time: float):
     """Compute overall score based on breakdown, speed, and user rating."""
@@ -27,11 +27,12 @@ def get_overall_score(ai_response: TherapyResponseSchema, process_time: float):
     field_names = ["relevance", "accuracy", "empathy", "clarity", "contextuality"]
     scores = {field: getattr(breakdown, field) for field in field_names}
     breakdown_score = sum(float(scores[key]) * weights[key] for key in scores) / 10  # Normalize to 0-10
-    speed_score = 1.0 / (process_time + 1e-5)  # Inverse time for speed
+    speed_score = min(10.0, 1.0 / (process_time + 0.01))
     overall_score = (0.6 * breakdown_score) + (0.2 * speed_score) + (0.2 * user_rating)
     return round(overall_score * 10, 2)  # Scale to 100
 
-async def forward(self: Miner, synapse: BetterTherapySynapse):
+# async def forward(self: Miner, synapse: BetterTherapySynapse):
+async def forward(synapse: BetterTherapySynapse, miner_preds: dict, inference_engine: TherapyInference):
     """
     Asynchronously process user queries using the fine-tuned medical model.
     Uses caching to avoid redundant inference.

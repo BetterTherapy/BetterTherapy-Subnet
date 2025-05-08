@@ -1,6 +1,6 @@
+# bettertherapy/protocol.py
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
 # Copyright © 2023 <your name>
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
@@ -19,6 +19,7 @@
 
 import typing
 import bittensor as bt
+from pydantic import Field  
 
 # TODO(developer): Rewrite with your protocol definition.
 
@@ -39,7 +40,6 @@ import bittensor as bt
 #   dummy_output = dendrite.query( Dummy( dummy_input = 1 ) )
 #   assert dummy_output == 2
 
-
 class BetterTherapySynapse(bt.Synapse):
     """
     A simple dummy protocol representation which uses bt.Synapse as its base.
@@ -51,19 +51,39 @@ class BetterTherapySynapse(bt.Synapse):
     - dummy_output: An optional integer value which, when filled, represents the response from the miner.
     """
 
-    # Required request input, filled by sending dendrite caller.
-    dummy_input: int
 
-    # Optional request output, filled by receiving axon.
-    dummy_output: typing.Optional[int] = None
+    # Required request inputs, filled by the validator
+    messages: list[dict] = Field(
+        default_factory=list,
+        description="List of user messages, each with 'role' and 'content' keys."
+    )
+    chat_history: list[dict] = Field(
+        default_factory=list,
+        description="List of conversation history entries, each with 'role' and 'content' keys."
+    )
 
-    def deserialize(self) -> int:
+    # Optional request output, filled by the miner
+    output: typing.Optional[list[dict]] = Field(
+        None,
+        description="List of miner responses, each containing 'response' and 'score' keys."
+    )
+
+    # Optional fields for compatibility with template code
+    dummy_input: typing.Optional[int] = Field(
+        None,
+        description="Optional dummy input "
+    )
+    dummy_output: typing.Optional[int] = Field(
+        None,
+        description="Optional dummy output."
+    )
+
+    def deserialize(self) -> typing.Optional[list[dict]]:
         """
-        Deserialize the dummy output. This method retrieves the response from
-        the miner in the form of dummy_output, deserializes it and returns it
-        as the output of the dendrite.query() call.
+        Deserialize the miner's response. This method retrieves the output field
+        and returns it as the result of the dendrite.query() call.
 
-        Returns:
+       Returns:
         - int: The deserialized response, which in this case is the value of dummy_output.
 
         Example:
@@ -73,4 +93,4 @@ class BetterTherapySynapse(bt.Synapse):
         >>> dummy_instance.deserialize()
         5
         """
-        return self.dummy_output
+        return self.output

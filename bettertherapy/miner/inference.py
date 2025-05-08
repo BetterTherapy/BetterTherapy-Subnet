@@ -26,7 +26,7 @@ class TherapyInference:
     def load_model(self):
         """Load the fine-tuned base model (placeholder)."""
         # this load the latest fine-tuned model from miner-shared resources
-        self.model = "medical_exam_model_v1"  # actual model loading logic
+        self.model = "basemodel"  # actual model loading logic(base model)
         bt.logging.info("Loaded fine-tuned base model")
 
     async def generate_therapy_response(self, query: str, chat_history: List[Dict[str, str]]) -> TherapyResponseSchema:
