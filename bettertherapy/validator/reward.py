@@ -1,7 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2023 BetterTherapy Team
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -16,40 +15,79 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
 import numpy as np
-from typing import List
+from typing import List, Dict
 import bittensor as bt
 
-
-def reward(query: int, response: int) -> float:
+def reward(miner_scores: List[float], resource_contribution: float) -> float:
     """
-    Reward the miner response to the dummy request. This method returns a reward
-    value for the miner, which is used to update the miner's score.
-
-    Returns:
-    - float: The reward value for the miner.
-    """
-    bt.logging.info(
-        f"In rewards, query val: {query}, response val: {response}, rewards val: {1.0 if response == query * 2 else 0}"
-    )
-    return 1.0 if response == query * 2 else 0
-
-
-def get_rewards(
-    self,
-    query: int,
-    responses: List[float],
-) -> np.ndarray:
-    """
-    Returns an array of rewards for the given query and responses.
+    Calculate reward for a miner based on response scores and resource contribution.
 
     Args:
-    - query (int): The query sent to the miner.
-    - responses (List[float]): A list of responses from the miner.
+        miner_scores (List[float]): List of response scores for the miner.
+        resource_contribution (float): Miner's resource contribution (e.g., compute hours).
 
     Returns:
-    - np.ndarray: An array of rewards for the given query and responses.
+        float: Reward value for the miner.
     """
-    # Get all the reward results by iteratively calling your reward() function.
+    avg_score = sum(miner_scores) / len(miner_scores) if miner_scores else 0.0
+    score_weight = avg_score / 100.0  # Normalize score (0-100 scale)
+    resource_weight = min(resource_contribution / 10.0, 1.0)  # Cap resource contribution
+    # Combined reward: 60% score, 40% resource
+    combined_reward = (0.6 * score_weight + 0.4 * resource_weight) * 100.0
+    bt.logging.debug(f"Reward calc: score={avg_score}, resource={resource_contribution}, reward={combined_reward}")
+    return round(combined_reward, 2)
 
-    return np.array([reward(query, response) for response in responses])
+def get_rewards(self, responses: List[Dict]) -> np.ndarray:
+    """
+    Returns an array of rewards for miners based on their responses.
+
+    Args:
+        self: The validator neuron object.
+        responses (List[Dict]): List of processed responses from miners.
+
+    Returns:
+        np.ndarray: Array of rewards for each miner.
+    """
+    miner_rewards = {}
+    miner_uids = set(resp["uid"] for resp in responses)
+
+    for uid in miner_uids:
+        miner_responses = [resp for resp in responses if resp["uid"] == uid]
+        miner_scores = [resp["score"] for resp in miner_responses]
+        resource_contribution = self.resource_logs.get(uid, {"compute_hours": 0.0})["compute_hours"]
+        miner_rewards[uid] = reward(miner_scores, resource_contribution)
+
+    # Create reward array aligned with metagraph UIDs
+    rewards = np.zeros(len(self.metagraph.uids))
+    for uid in miner_uids:
+        rewards[uid] = miner_rewards.get(uid, 0.0)
+    
+    bt.logging.info(f"Scored rewards: {rewards}")
+    return rewards
+
+def apply_rewards(self, rewards: np.ndarray, miner_uids: List[int]):
+    """
+    Apply rewards to miners and reset tracking for the next cycle.
+
+    Args:
+        self: The validator neuron object.
+        rewards (np.ndarray): Array of rewards for miners.
+        miner_uids (List[int]): List of miner UIDs that were queried.
+    """
+    # Select top 100 miners by reward
+    top_indices = np.argsort(rewards)[::-1][:100]
+    total_reward = sum(rewards[top_indices]) or 1.0  # Avoid division by zero
+
+    # Update metagraph scores for top miners
+    for idx in top_indices:
+        if rewards[idx] > 0:
+            normalized_reward = rewards[idx] / total_reward
+            self.metagraph.S[idx] += normalized_reward  # Update stake (simulated)
+            bt.logging.info(f"Applied reward to miner {idx}: {rewards[idx]} (Normalized: {normalized_reward})")
+
+    # Reset tracking for next cycle
+    self.miner_scores = {}
+    self.resource_logs = {}
+    bt.logging.info("Reset miner scores and resource logs for next cycle")

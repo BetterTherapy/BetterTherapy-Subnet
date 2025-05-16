@@ -17,9 +17,10 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-
+import sys
 import time
-
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Bittensor
 import bittensor as bt
 
@@ -30,13 +31,53 @@ from bettertherapy.base.validator import BaseValidatorNeuron
 from bettertherapy.validator import forward
 
 
+# class Validator(BaseValidatorNeuron):
+#     """
+#     Your validator neuron class. You should use this class to define your validator's behavior. In particular, you should replace the forward function with your own logic.
+
+#     This class inherits from the BaseValidatorNeuron class, which in turn inherits from BaseNeuron. The BaseNeuron class takes care of routine tasks such as setting up wallet, subtensor, metagraph, logging directory, parsing config, etc. You can override any of the methods in BaseNeuron if you need to customize the behavior.
+
+#     This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
+#     """
+
+#     def __init__(self, config=None):
+#         super(Validator, self).__init__(config=config)
+
+#         bt.logging.info("load_state()")
+#         self.load_state()
+
+#         # TODO(developer): Anything specific to your use case you can do here
+
+#     async def forward(self):
+#         """
+#         Validator forward pass. Consists of:
+#         - Generating the query
+#         - Querying the miners
+#         - Getting the responses
+#         - Rewarding the miners
+#         - Updating the scores
+#         """
+#         # TODO(developer): Rewrite this function based on your protocol definition.
+#         return await forward(self)
+
+# # Generate sample messages and chat history
+#         messages = [
+#             {"role": "user", "content": "I'm feeling anxious, what should I do?"}
+#         ]
+#         chat_history = [
+#             {"role": "user", "content": "Hi, I need some help."},
+#             {"role": "assistant", "content": "Hello! I'm here to assist you."}
+#         ]
+
+#         # Call the forward function with the required arguments
+#         return await forward(self, messages, chat_history)
+
+
+
 class Validator(BaseValidatorNeuron):
     """
-    Your validator neuron class. You should use this class to define your validator's behavior. In particular, you should replace the forward function with your own logic.
-
-    This class inherits from the BaseValidatorNeuron class, which in turn inherits from BaseNeuron. The BaseNeuron class takes care of routine tasks such as setting up wallet, subtensor, metagraph, logging directory, parsing config, etc. You can override any of the methods in BaseNeuron if you need to customize the behavior.
-
-    This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
+    Your validator neuron class for BetterTherapy.AI. Override the forward method to define
+    how validators score miners' responses based on psychological protocol criteria.
     """
 
     def __init__(self, config=None):
@@ -45,21 +86,24 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info("load_state()")
         self.load_state()
 
-        # TODO(developer): Anything specific to your use case you can do here
-
     async def forward(self):
         """
-        Validator forward pass. Consists of:
-        - Generating the query
-        - Querying the miners
-        - Getting the responses
-        - Rewarding the miners
-        - Updating the scores
+        Custom forward pass:
+        - Generate input message
+        - Query all miners
+        - Evaluate responses
+        - Reward accordingly
         """
-        # TODO(developer): Rewrite this function based on your protocol definition.
-        return await forward(self)
 
+        messages = [
+            {"role": "user", "content": "I'm feeling anxious, what should I do?"}
+        ]
+        chat_history = [
+            {"role": "user", "content": "Hi, I need some help."},
+            {"role": "assistant", "content": "Hello! I'm here to assist you."}
+        ]
 
+        return await forward(self, messages, chat_history)
 # The main function parses the configuration and runs the validator.
 if __name__ == "__main__":
     with Validator() as validator:
