@@ -375,26 +375,78 @@ class BaseValidatorNeuron(BaseNeuron):
         self.scores: np.ndarray = (
             alpha * scattered_rewards + (1 - alpha) * self.scores
         )
-        bt.logging.debug(f"Updated moving avg scores: {self.scores}")
+        bt.logging.debug(f"Updated moving avg scores for uids {uids_array}: {self.scores[uids_array]}")
 
-    def save_state(self):
-        """Saves the state of the validator to a file."""
-        bt.logging.info("Saving validator state.")
-
-        # Save the state of the validator to file.
-        np.savez(
-            self.config.neuron.full_path + "/state.npz",
-            step=self.step,
-            scores=self.scores,
-            hotkeys=self.hotkeys,
+def set_weights(self):
+    if np.isnan(self.scores).any():
+        bt.logging.warning(
+            f"Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
         )
 
-    def load_state(self):
-        """Loads the state of the validator from a file."""
-        bt.logging.info("Loading validator state.")
+    norm = np.linalg.norm(self.scores, ord=1, axis=0, keepdims=True)
+    if np.any(norm == 0) or np.isnan(norm).any():
+        norm = np.ones_like(norm)
 
-        # Load the state of the validator from file.
-        state = np.load(self.config.neuron.full_path + "/state.npz")
-        self.step = state["step"]
-        self.scores = state["scores"]
-        self.hotkeys = state["hotkeys"]
+    raw_weights = self.scores / norm
+    bt.logging.debug("raw_weights", raw_weights)
+    bt.logging.debug("raw_weight_uids", str(self.metagraph.uids.tolist()))
+
+    (
+        processed_weight_uids,
+        processed_weights,
+    ) = process_weights_for_netuid(
+        uids=self.metagraph.uids,
+        weights=raw_weights,
+        netuid=self.config.netuid,
+        subtensor=self.subtensor,
+        metagraph=self.metagraph,
+    )
+    bt.logging.debug("processed_weights", processed_weights)
+    bt.logging.debug("processed_weight_uids", processed_weight_uids)
+
+    (
+        uint_uids,
+        uint_weights,
+    ) = convert_weights_and_uids_for_emit(
+        uids=processed_weight_uids, weights=processed_weights
+    )
+    bt.logging.debug("uint_weights", uint_weights)
+    bt.logging.debug("uint_uids", uint_uids)
+
+    result, msg = self.subtensor.set_weights(
+        wallet=self.wallet,
+        netuid=self.config.netuid,
+        uids=uint_uids,
+        weights=uint_weights,
+        wait_for_finalization=False,
+        wait_for_inclusion=False,
+        version_key=self.spec_version,
+    )
+    if result is True:
+        bt.logging.info("set_weights on chain successfully!")
+        self.save_state()  # NEW: Save state after setting weights
+    else:
+        bt.logging.error("set_weights failed", msg)
+
+
+    # def save_state(self):
+    #     """Saves the state of the validator to a file."""
+    #     bt.logging.info("Saving validator state.")
+
+    #     # Save the state of the validator to file.
+    #     np.savez(
+    #         self.config.neuron.full_path + "/state.npz",
+    #         step=self.step,
+    #         scores=self.scores,
+    #         hotkeys=self.hotkeys,
+    #     )
+
+    # def load_state(self):
+    #     """Loads the state of the validator from a file."""
+    #     bt.logging.info("Loading validator state.")
+
+    #     # Load the state of the validator from file.
+    #     state = np.load(self.config.neuron.full_path + "/state.npz")
+    #     self.step = state["step"]
+    #     self.scores = state["scores"]
+    #     self.hotkeys = state["hotkeys"]

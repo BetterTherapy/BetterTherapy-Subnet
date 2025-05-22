@@ -59,7 +59,7 @@ class TherapyInference:
                 query=query,
                 response_text=response_text,
                 breakdown=breakdown,
-                user_rating=1.0  # Default, updated after user feedback
+                user_rating=0  # Default, updated after user feedback
             )
         except Exception as e:
             bt.logging.error(f"Failed to generate medical response: {str(e)}")
