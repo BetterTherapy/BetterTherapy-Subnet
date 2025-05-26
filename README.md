@@ -38,7 +38,7 @@ This repo provides a complete setup to:
 
 ## Introduction
 
-**BetterTherapy Subnet** is a decentralized protocol for deploying personalized **AI Doctor Twins**. Each twin represents a real-world, licensed expert (e.g., Dr. Indra Gurung), fine-tuned with domain-specific expertise to provide high-quality health insights to users.
+**BetterTherapy Subnet** is a decentralized protocol for deploying personalized **AI Doctor Twins**. Each twin represents a real-world, licensed expert (e.g., Dr.Gurung), fine-tuned with domain-specific expertise to provide high-quality health insights to users.
 
 This subnet uses Bittensor’s infrastructure to incentivize the best-performing agents, validators, and contributors with TAO.
 
@@ -47,7 +47,7 @@ This subnet uses Bittensor’s infrastructure to incentivize the best-performing
 > Train & deploy AI Doctor Twins for trusted medical consultations at scale.
 
 #### Example Workflow:
-1. **Dr. Indra Gurung** is onboarded to the subnet.
+1. **Dr. Gurung** is onboarded to the subnet.
 2. A base LLM (pretrained on medical exams) is fine-tuned with Doctors' expertise daily.
 3. Users select “Dr.  AI” and ask personalized health questions.
 4. Validators evaluate the miner's responses for clarity, medical accuracy, and user satisfaction.
