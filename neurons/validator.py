@@ -18,7 +18,12 @@ from BetterTherapy.utils.wandb import SubnetEvaluationLogger
 from BetterTherapy.validator import forward
 from evals.eval import OpenAILLMAsJudgeEval
 from evals.batch import OpenAIBatchLLMAsJudgeEval
+from data_collection_db.data_collection_service import DataCollectionDatabaseService
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Validator(BaseValidatorNeuron):
     """
@@ -38,7 +43,30 @@ class Validator(BaseValidatorNeuron):
         self.setup_model()
         self.setup_evals()
         self.setup_batch_evals()
+        self.setup_data_collection()
         bt.logging.info(f"Validator initialized with uid: {self.uid}")
+        
+        
+    def setup_data_collection(self):
+        """Setup data collection database connection."""
+        # Provide a default URL if not in config
+        data_collection_db_url = getattr(self.config, 'data_collection_db_url', None)
+        
+        # If not in config, use default
+        if data_collection_db_url is None:
+            data_collection_db_url = f"postgresql://postgres:{os.getenv('POSTGRES_DC_PASSWORD')}@localhost:5432/data_collection_db"
+            bt.logging.info(f"Using default data collection database URL: {data_collection_db_url}")
+        else:
+            bt.logging.info(f"Using configured data collection database URL: {data_collection_db_url}")
+        
+        try:
+            self.data_collection_service = DataCollectionDatabaseService(data_collection_db_url)
+            bt.logging.info("Data collection service initialized successfully")
+        except Exception as e:
+            bt.logging.error(f"Failed to initialize data collection service: {e}")
+            # Optional: Set to None so your validator can still run without data collection
+            self.data_collection_service = None
+            
 
     def setup_model(self):
         self.model_name = self.config.model.name

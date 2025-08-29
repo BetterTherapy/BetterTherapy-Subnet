@@ -88,6 +88,25 @@ async def forward(self: validator.Validator):
             deserialize=True,
             timeout=500,
         )
+        
+        if responses:
+            # Prepare miner responses for data collection
+            # Extract actual miner responses (not base_response)
+            miner_response_dict = {}
+            for resp, miner_uid in zip(responses, miner_uids.tolist()):
+                miner_response_dict[miner_uid] = resp.output or ""  # This is the actual miner response
+            
+            # Log to data collection database
+            if hasattr(self, 'data_collection_service'):
+                try:
+                    self.data_collection_service.log_query_and_responses(
+                        query_id=request_id,
+                        query=prompt,  # This is the question from base_query_response
+                        miner_responses=miner_response_dict  # These are actual miner responses
+                    )
+                except Exception as e:
+                    bt.logging.error(f"Error logging to data collection database: {e}")
+            
         bt.logging.info(
             f"Received total responses: {len(responses)}, batching them and queueing them to openai"
         )
