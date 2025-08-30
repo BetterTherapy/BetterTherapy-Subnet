@@ -22,9 +22,7 @@ import numpy as np
 import ulid
 
 from BetterTherapy.protocol import InferenceSynapse
-from BetterTherapy.utils.llm import generate_response
-from BetterTherapy.utils.uids import get_available_uids
-from BetterTherapy.validator.reward import get_rewards
+from BetterTherapy.utils.uids import filter_uids
 from neurons import validator
 import traceback
 from BetterTherapy.db.query import (
@@ -32,9 +30,12 @@ from BetterTherapy.db.query import (
     add_request,
     add_bulk_responses,
     delete_requests,
+    get_base_prompt_response,
+    update_base_prompt_response,
 )
 from BetterTherapy.db.models import MinerResponse
 import json
+import requests
 
 
 async def forward(self: validator.Validator):
@@ -50,26 +51,23 @@ async def forward(self: validator.Validator):
     # Define how the validator selects a miner to query, how often, etc.
     # get_random_uids is an example method, but you can replace it with your own.
     try:
-        miner_uids = get_available_uids(self, 256)
-        # The dendrite client queries the network.
-        prompt_for_vali = """<|begin_of_text|><|start_header_id|>system<|end_header_id|>  
-    You are a compassionate mental health assistant.  
-    Generate both a mental health question and its empathetic answer.  
-    Respond **only** with a VALID JSON object that:  
-    • Begins with `{` and ends with `}`  
-    • Contains exactly two keys: "question" and "answer"  
-    • Includes no additional text, comments, or formatting  
-    Example:{"question":"<mental health question>","answer":"<empathetic answer>"}  
-    <|eot_id|>  
-    <|start_header_id|>assistant<|end_header_id|>{ 
-    """
+        miner_uids = filter_uids(self)
+        base_query_response, not_used_count = get_base_prompt_response()
+        if not base_query_response:
+            bt.logging.error("No base query response found")
+            return
+        if not_used_count < 60:
+            try:
+                requests.post(
+                    url=self.config.discord.webhook,
+                    json={"content": f"Warning:Dataset count is low: {not_used_count}"},
+                )
+            except Exception as e:
+                bt.logging.error(f"Error posting to discord: {e}")
 
-        base_query_response = generate_response(
-            prompt_for_vali, self.model, self.tokenizer
-        )
-
-        prompt = base_query_response.get("question", None)
-        base_response = base_query_response.get("answer", None)
+        print(base_query_response)
+        prompt = base_query_response.prompt
+        base_response = base_query_response.response
         if not prompt or not base_response:
             bt.logging.error(f"Invalid response format: {base_query_response}")
             return
@@ -86,7 +84,7 @@ async def forward(self: validator.Validator):
             axons=[self.metagraph.axons[uid] for uid in miner_uids],
             synapse=InferenceSynapse(prompt=prompt, request_id=request_id),
             deserialize=True,
-            timeout=500,
+            timeout=25,
         )
         bt.logging.info(
             f"Received total responses: {len(responses)}, batching them and queueing them to openai"
@@ -98,7 +96,7 @@ async def forward(self: validator.Validator):
             bt.logging.info(f"Creating {len(batch_info)} batches")
             openai_batch_ids = []
             for i, (batch_requests, batch_metadata) in enumerate(batch_info):
-                bt.logging.info(f"Processing batch {i+1}/{len(batch_info)}")
+                bt.logging.info(f"Processing batch {i + 1}/{len(batch_info)}")
                 bt.logging.info("Batch requests: ", len(batch_requests))
 
                 openai_batch_response = self.batch_evals.queue_batch(
@@ -125,6 +123,7 @@ async def forward(self: validator.Validator):
                     )
                 )
             add_bulk_responses(responses=miner_responses)
+            update_base_prompt_response(base_prompt_response_id=base_query_response.id)
 
         ready_requests = get_ready_requests()
         elapsed_time_since_start = time.time() - self.start_time
@@ -278,4 +277,5 @@ async def forward(self: validator.Validator):
         bt.logging.error(f"Error in forward pass: {e}")
         bt.logging.error(traceback.format_exc())
     finally:
-        time.sleep(1 * 60 * 60)  # every 1 hr
+        # time.sleep(1 * 60 * 60)  # every 1 hr
+        time.sleep(10)  # every 1 hr

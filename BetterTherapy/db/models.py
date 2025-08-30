@@ -1,10 +1,21 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime, func
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Integer,
+    String,
+    Float,
+    ForeignKey,
+    Text,
+    DateTime,
+    func,
+)
 from datetime import datetime
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.declarative import declared_attr
 
 
 Base = declarative_base()
+DatasetBase = declarative_base()
 
 
 class TimestampMixin(object):
@@ -41,3 +52,12 @@ class MinerResponse(Base, TimestampMixin):
     time_score = Column(Float, nullable=True)
     quality_score = Column(Float, nullable=True)
     total_score = Column(Float, nullable=True)
+
+
+# Dataset DB Models
+class BasePromptResponse(DatasetBase):
+    __tablename__ = "base_prompt_response"
+    id = Column(Integer, primary_key=True, index=True)
+    prompt = Column(String, nullable=False)
+    response = Column(String, nullable=False)
+    is_used = Column(Boolean, default=False, index=True)

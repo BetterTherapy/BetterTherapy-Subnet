@@ -35,31 +35,9 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info("load_state()")
         self.load_state()
         self.setup_wandb()
-        self.setup_model()
         self.setup_evals()
         self.setup_batch_evals()
         bt.logging.info(f"Validator initialized with uid: {self.uid}")
-
-    def setup_model(self):
-        self.model_name = self.config.model.name
-
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        if self.config.model.offload_to_cpu:
-            max_memory = {
-                0: self.config.model.vram_in_GiB + "GiB",
-                "cpu": self.config.model.cpu_in_GiB + "GiB",
-            }
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                device_map="auto",
-                max_memory=max_memory,
-                torch_dtype=torch.float16,
-            )
-        else:
-            self.model = AutoModelForCausalLM.from_pretrained(self.model_name)
-            if torch.cuda.is_available():
-                self.model.to("cuda")
-        self.model.eval()
 
     def setup_batch_evals(self):
         api_key = self.config.openai.api_key
