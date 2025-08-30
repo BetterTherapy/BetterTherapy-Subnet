@@ -84,7 +84,7 @@ async def forward(self: validator.Validator):
             axons=[self.metagraph.axons[uid] for uid in miner_uids],
             synapse=InferenceSynapse(prompt=prompt, request_id=request_id),
             deserialize=True,
-            timeout=25,
+            timeout=50,
         )
         bt.logging.info(
             f"Received total responses: {len(responses)}, batching them and queueing them to openai"
@@ -277,5 +277,4 @@ async def forward(self: validator.Validator):
         bt.logging.error(f"Error in forward pass: {e}")
         bt.logging.error(traceback.format_exc())
     finally:
-        # time.sleep(1 * 60 * 60)  # every 1 hr
-        time.sleep(10)  # every 1 hr
+        time.sleep(1 * 60 * 60)  # every 1 hr
