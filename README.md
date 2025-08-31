@@ -79,7 +79,40 @@ uv sync
 uv pip install -e .
 ```
 
-### 3. Run Migrations
+### 3. Environment Setup
+
+#### Database Configuration
+
+The BetterTherapy subnet uses two databases:
+
+1. **Main Database**: SQLite database (`bettertherapy.db`) for storing requests and miner responses
+2. **Dataset Database**: External database for storing base prompt-response pairs used for evaluation
+
+#### Required Environment Variables
+
+Set the `DATASET_DB_URL` either in `.env` or environment variable to point to your dataset database:
+
+```bash
+export DATASET_DB_URL="postgresql://username:password@localhost:5432/dataset_db"
+
+```
+
+**Note**: The `DATASET_DB_URL` environment variable is **required** and must be set before running the validator. The application will fail to start if this variable is not configured.
+
+#### Database Schema
+
+The dataset database should contain a `base_prompt_response` table with the following schema:
+
+```sql
+CREATE TABLE base_prompt_response (
+    id INTEGER PRIMARY KEY,
+    prompt VARCHAR NOT NULL,
+    response VARCHAR NOT NULL,
+    is_used BOOLEAN DEFAULT FALSE
+);
+```
+
+### 4. Run Migrations
 
 ```bash
 uv run alembic upgrade head
@@ -232,7 +265,10 @@ This project uses [Weights & Biases (wandb)](https://wandb.ai/) for experiment t
 
 ## Discord Notifications
 
-The subnet supports Discord webhook notifications for LLM judge failure
+The subnet supports Discord webhook notifications for:
+
+- LLM judge failures
+- Dataset count warnings (when available dataset items fall below 60)
 
 ### Setup Discord Webhook
 
@@ -268,7 +304,7 @@ The subnet supports Discord webhook notifications for LLM judge failure
 
 ### Start Validator Locally
 
-To start a validator (after setting up wallets and registering on your subnet):
+To start a validator (after setting up wallets, registering on your subnet, and configuring the `DATASET_DB_URL`):
 
 The validator will automatically create and manage runs, groups, and dashboards in wandb. See `BetterTherapy/utils/wandb.py` for advanced usage.
 
@@ -283,9 +319,12 @@ uv run neurons/validator.py \
 
 ### Running with PM2 (Process Manager)
 
-For production deployments, you can use PM2 to manage the validator process:
+For production deployments, you can use PM2 to manage the validator process. Make sure to set the `DATASET_DB_URL` environment variable in your PM2 configuration:
 
 ```bash
+# Set environment variable for PM2
+export DATASET_DB_URL="your_dataset_database_url_here"
+
 pm2 start uv --name bt-test-vali \
   -- run neurons/validator.py \
   --netuid <your_netuid> \
