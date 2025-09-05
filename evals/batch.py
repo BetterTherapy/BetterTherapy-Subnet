@@ -65,7 +65,7 @@ class OpenAIBatchLLMAsJudgeEval:
         current_batch_responses = []
         current_batch_miner_uids = []
         current_word_count = 0
-        max_words_per_batch = 4500  # 1000 tokens ~ 750 words
+        max_words_per_batch = 4200  # 1000 tokens ~ 750 words
         batch_metadata = {}
         request_number = 1
         for i, (response, miner_uid) in enumerate(zip(responses, miner_uids)):
@@ -82,6 +82,10 @@ class OpenAIBatchLLMAsJudgeEval:
             if (current_word_count + response_word_count > max_words_per_batch) or (
                 current_word_count and i == min(len(responses) - 1, len(miner_uids) - 1)
             ):
+                current_batch_miner_uids.append(miner_uid)
+                current_batch_responses.append(response.output)
+                current_word_count += response_word_count
+                   
                 custom_id = f"{request_id}_{request_number}"
                 request = {
                     "custom_id": custom_id,
