@@ -34,15 +34,22 @@ def filter_uids(
     available = []
     counts: Dict[str, int] = {}
     ip_counts: Dict[str, int] = {}
+    ip_port_sets = set()
 
     for uid in range(bt_obj.metagraph.n.item()):
         ip_address = bt_obj.metagraph.axons[uid].ip
+        port = bt_obj.metagraph.axons[uid].port
+        ip_port = f"{ip_address}:{port}"
         ip_counts[ip_address] = ip_counts.get(ip_address, 0) + 1
         if ip_counts[ip_address] >= max_per_key:
             bt.logging.warning(
                 f"IP {ip_address} for uid {uid} has reached max_per_key: {max_per_key}"
             )
             continue
+        
+        if ip_port in ip_port_sets:
+            continue
+        ip_port_sets.add(ip_port)
         uid_is_available = check_uid_availability(
             bt_obj.metagraph, uid, bt_obj.config.neuron.vpermit_tao_limit
         )
