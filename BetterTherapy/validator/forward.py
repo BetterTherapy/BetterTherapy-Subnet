@@ -181,7 +181,7 @@ async def forward(self: validator.Validator):
                                 response_time_score = 0
                                 miner_uid = int(miner_uid)
                                 bounded_score = max(0.0, min(1.0, float(score)))
-                                if bounded_score == 0.0:
+                                if bounded_score <= 0.2:
                                     total_score = 0.0
                                 elif bounded_score > 0.2:
                                     miner_data = miner_db_response.get(miner_uid)
