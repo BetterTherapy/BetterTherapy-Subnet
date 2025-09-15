@@ -244,6 +244,8 @@ async def forward(self: validator.Validator):
                                 f"Error parsing judge JSON: {e}, content: {parsed_eval}"
                             )
                             bt.logging.error(traceback.format_exc())
+                else:
+                    processed_request_ids.append(req.id)
                 if judged_responses:
                     self.wandb_logger.log_evaluation_round(
                         prompt, req.name, judged_responses
@@ -259,6 +261,8 @@ async def forward(self: validator.Validator):
                 bt.logging.info(
                     f"Updated scores for miners: keys: {rewarded_miner_ids}, values: {reward_scores.tolist()}"
                 )
+
+            if processed_request_ids:
                 delete_requests(request_ids=processed_request_ids)
                 bt.logging.info(
                     f"Deleted processed requests with IDs: {processed_request_ids}"
