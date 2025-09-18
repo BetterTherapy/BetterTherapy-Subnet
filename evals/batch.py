@@ -64,9 +64,39 @@ class OpenAIBatchLLMAsJudgeEval:
         current_batch_responses = []
         current_batch_miner_uids = []
         current_word_count = 0
-        max_words_per_batch = 4500  # 1000 tokens ~ 750 words
+        max_words_per_batch = 4200  # 1000 tokens ~ 750 words
         batch_metadata = {}
         request_number = 1
+
+        def create_request():
+            """Helper function to create a request from current batch"""
+            nonlocal request_number
+            custom_id = f"{request_id}_{request_number}"
+            request = {
+                "custom_id": custom_id,
+                "method": "POST",
+                "url": "/v1/chat/completions",
+                "body": {
+                    "model": self.judge_model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a strict and fair judge for therapy responses.",
+                        },
+                        {
+                            "role": "user",
+                            "content": self.create_judge_prompt(
+                                prompt, base_response, current_batch_responses
+                            ),
+                        },
+                    ],
+                    "max_tokens": 1000,
+                },
+            }
+            batch.append(request)
+            batch_metadata[custom_id] = ",".join(map(str, current_batch_miner_uids))
+            request_number += 1
+
         for i, (response, miner_uid) in enumerate(zip(responses, miner_uids)):
             if not response.output:
                 continue
@@ -78,42 +108,24 @@ class OpenAIBatchLLMAsJudgeEval:
                 request_number = 1
 
             response_word_count = count_words(response.output)
-            if (current_word_count + response_word_count > max_words_per_batch) or (
-                current_word_count and i == min(len(responses) - 1, len(miner_uids) - 1)
-            ):
-                custom_id = f"{request_id}_{request_number}"
-                request = {
-                    "custom_id": custom_id,
-                    "method": "POST",
-                    "url": "/v1/chat/completions",
-                    "body": {
-                        "model": self.judge_model,
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": "You are a strict and fair judge for therapy responses.",
-                            },
-                            {
-                                "role": "user",
-                                "content": self.create_judge_prompt(
-                                    prompt, base_response, current_batch_responses
-                                ),
-                            },
-                        ],
-                        "max_tokens": 1000,
-                    },
-                }
-                batch.append(request)
-                batch_metadata[custom_id] = ",".join(map(str, current_batch_miner_uids))
-                current_batch_responses = []
-                current_batch_miner_uids = []
+            is_last_loop = i == min(len(responses) - 1, len(miner_uids) - 1)
+            if current_word_count + response_word_count > max_words_per_batch:
+                create_request()
+                if response_word_count:
+                    current_batch_miner_uids = [miner_uid]
+                    current_batch_responses = [response.output]
+                else:
+                    current_batch_miner_uids = []
+                    current_batch_responses = []
                 current_word_count = 0
-                request_number += 1
 
             else:
                 current_batch_miner_uids.append(miner_uid)
                 current_batch_responses.append(response.output)
                 current_word_count += response_word_count
+
+            if is_last_loop and current_batch_responses:
+                create_request()
 
         all_batches.append((batch, batch_metadata))
         return all_batches
