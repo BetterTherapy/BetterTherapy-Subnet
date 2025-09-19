@@ -1,7 +1,7 @@
 import json
 
 from openai import OpenAI
-from .utils import count_gpt_4_tokens
+from .utils import count_and_clip_tokens
 import bittensor as bt
 from BetterTherapy.protocol import InferenceSynapse
 
@@ -50,6 +50,7 @@ class OpenAIBatchLLMAsJudgeEval:
         base_response: str,
         request_id: str,
         responses: list[InferenceSynapse],
+        max_tokens_per_response: int,
         miner_uids: list[int],
         max_request_per_batch: int = 12,
     ) -> list[tuple[list[dict], dict]]:
@@ -100,20 +101,20 @@ class OpenAIBatchLLMAsJudgeEval:
         for i, (response, miner_uid) in enumerate(zip(responses, miner_uids)):
             if not response.output:
                 continue
-
+            response_token_count, individual_response = count_and_clip_tokens(response.output, max_tokens_per_response)
+            
             if request_number > max_request_per_batch:
                 all_batches.append((batch, batch_metadata))
                 batch = []
                 batch_metadata = {}
                 request_number = 1
 
-            response_token_count = count_gpt_4_tokens(response.output)
             is_last_loop = i == min(len(responses) - 1, len(miner_uids) - 1)
             if current_token_count + response_token_count > max_token_per_batch:
                 create_request()
                 if response_token_count:
                     current_batch_miner_uids = [miner_uid]
-                    current_batch_responses = [response.output]
+                    current_batch_responses = [individual_response]
                 else:
                     current_batch_miner_uids = []
                     current_batch_responses = []
@@ -121,7 +122,7 @@ class OpenAIBatchLLMAsJudgeEval:
 
             else:
                 current_batch_miner_uids.append(miner_uid)
-                current_batch_responses.append(response.output)
+                current_batch_responses.append(individual_response)
                 current_token_count += response_token_count
 
             if is_last_loop and current_batch_responses:
