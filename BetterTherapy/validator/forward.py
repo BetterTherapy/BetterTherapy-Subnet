@@ -62,6 +62,7 @@ async def forward(self: validator.Validator):
     <|eot_id|>  
     <|start_header_id|>assistant<|end_header_id|>{ 
     """
+        MAX_TOKENS_PER_RESPONSE = 400
 
         base_query_response = generate_response(
             prompt_for_vali, self.model, self.tokenizer
@@ -92,7 +93,7 @@ async def forward(self: validator.Validator):
         )
         if responses:
             batch_info = self.batch_evals.create_batch(
-                prompt, base_response, request_id, responses, miner_uids.tolist()
+                prompt, base_response, request_id, responses, MAX_TOKENS_PER_RESPONSE, miner_uids.tolist()
             )
             bt.logging.info(f"Creating {len(batch_info)} batches")
             openai_batch_ids = []

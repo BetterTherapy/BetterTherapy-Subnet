@@ -22,6 +22,7 @@ dependencies = [
     "setuptools>=68",
     "sqlalchemy>=2.0.41",
     "starlette>=0.30.0",
+    "tiktoken>=0.11.0",
     "torch>=2",
     "transformers>=4.53.2",
     "ulid-py>=1.1.0",
