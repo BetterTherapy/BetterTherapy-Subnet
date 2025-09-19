@@ -1,7 +1,7 @@
 import json
 
 from openai import OpenAI
-from .utils import count_words
+from .utils import count_gpt_4_tokens
 import bittensor as bt
 from BetterTherapy.protocol import InferenceSynapse
 
@@ -63,8 +63,8 @@ class OpenAIBatchLLMAsJudgeEval:
         batch = []
         current_batch_responses = []
         current_batch_miner_uids = []
-        current_word_count = 0
-        max_words_per_batch = 4200  # 1000 tokens ~ 750 words
+        current_token_count = 0
+        max_token_per_batch = 6000  # 1000 tokens ~ 750 words
         batch_metadata = {}
         request_number = 1
 
@@ -107,22 +107,22 @@ class OpenAIBatchLLMAsJudgeEval:
                 batch_metadata = {}
                 request_number = 1
 
-            response_word_count = count_words(response.output)
+            response_token_count = count_gpt_4_tokens(response.output)
             is_last_loop = i == min(len(responses) - 1, len(miner_uids) - 1)
-            if current_word_count + response_word_count > max_words_per_batch:
+            if current_token_count + response_token_count > max_token_per_batch:
                 create_request()
-                if response_word_count:
+                if response_token_count:
                     current_batch_miner_uids = [miner_uid]
                     current_batch_responses = [response.output]
                 else:
                     current_batch_miner_uids = []
                     current_batch_responses = []
-                current_word_count = 0
+                current_token_count = 0
 
             else:
                 current_batch_miner_uids.append(miner_uid)
                 current_batch_responses.append(response.output)
-                current_word_count += response_word_count
+                current_token_count += response_token_count
 
             if is_last_loop and current_batch_responses:
                 create_request()
