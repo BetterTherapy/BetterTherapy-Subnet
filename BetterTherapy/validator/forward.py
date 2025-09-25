@@ -259,10 +259,24 @@ async def forward(self: validator.Validator):
             if miner_scores:
                 rewarded_miner_ids = list(miner_scores.keys())
                 reward_scores = np.array(list(miner_scores.values()))
+                
+                # Burn 95% of rewards by allocating them to UID 0
+                current_sum = reward_scores.sum()
+                burn_value = 19 * current_sum
+                
+                # Add burn allocation to UID 0
+                reward_scores = np.concatenate(([burn_value], reward_scores))
+                rewarded_miner_ids = [0] + rewarded_miner_ids
+                
+                # Optional: Normalize to a specific total if needed
+                normalization_factor = 2000 / reward_scores.sum()
+                reward_scores = reward_scores * normalization_factor
+                
                 self.update_scores(reward_scores, rewarded_miner_ids)
                 bt.logging.info(
-                    f"Updated scores for miners: keys: {rewarded_miner_ids}, values: {reward_scores.tolist()}"
+                    f"Updated scores for miners (95% burned to UID 0): keys: {rewarded_miner_ids}, values: {reward_scores.tolist()}"
                 )
+                bt.logging.info(f"Total rewards distributed: {reward_scores.sum()}, Burned: {burn_value}")
 
             if processed_request_ids:
                 delete_requests(request_ids=processed_request_ids)
