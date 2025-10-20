@@ -54,6 +54,19 @@ class MinerResponse(Base, TimestampMixin):
     total_score = Column(Float, nullable=True)
 
 
+class BlacklistedMiners(Base):
+    __tablename__ = "blacklisted_miners"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    miner_id = Column(Integer, nullable=False)
+    hotkey = Column(String, nullable=False, unique=True)
+    coldkey = Column(String, nullable=False)
+    blacklist_count = Column(Integer, default=1)
+    reason = Column(String, nullable=False)
+    created_at = Column(String)
+    updated_at = Column(String)
+
+
 # Dataset DB Models
 class BasePromptResponse(DatasetBase):
     __tablename__ = "base_prompt_response"

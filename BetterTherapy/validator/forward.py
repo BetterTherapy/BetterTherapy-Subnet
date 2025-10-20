@@ -26,6 +26,7 @@ from BetterTherapy.utils.uids import filter_uids
 from neurons import validator
 import traceback
 from BetterTherapy.db.query import (
+    add_or_update_blacklisted_miner,
     get_ready_requests,
     add_request,
     add_bulk_responses,
@@ -64,10 +65,9 @@ async def forward(self: validator.Validator):
                 )
             except Exception as e:
                 bt.logging.error(f"Error posting to discord: {e}")
-                
+
         MAX_TOKENS_PER_RESPONSE = 400
 
-        print(base_query_response)
         prompt = base_query_response.prompt
         base_response = base_query_response.response
         if not prompt or not base_response:
@@ -93,7 +93,12 @@ async def forward(self: validator.Validator):
         )
         if responses:
             batch_info = self.batch_evals.create_batch(
-                prompt, base_response, request_id, responses, MAX_TOKENS_PER_RESPONSE, miner_uids.tolist()
+                prompt,
+                base_response,
+                request_id,
+                responses,
+                MAX_TOKENS_PER_RESPONSE,
+                miner_uids.tolist(),
             )
             bt.logging.info(f"Creating {len(batch_info)} batches")
             openai_batch_ids = []
@@ -115,7 +120,7 @@ async def forward(self: validator.Validator):
                 )
 
             miner_responses = []
-            for resp, miner_uid in zip(responses, miner_uids.tolist()):
+            for resp, miner_uid in zip(responses, miner_uids.tolist(), strict=False):
                 miner_responses.append(
                     MinerResponse(
                         request_id=new_request.id,
@@ -180,6 +185,15 @@ async def forward(self: validator.Validator):
                                 scores,
                                 parsed_miners,
                             ):
+                                if score == -1:
+                                    bt.logging.info(f"Blacklisting miner {miner_uid}")
+                                    add_or_update_blacklisted_miner(
+                                        miner_id=miner_uid,
+                                        hotkey=self.metagraph.hotkeys[int(miner_uid)],
+                                        coldkey=self.metagraph.coldkeys[int(miner_uid)],
+                                        reason="Malicious response detected",
+                                    )
+                                    continue
                                 response_time_score = 0
                                 miner_uid = int(miner_uid)
                                 bounded_score = max(0.0, min(1.0, float(score)))
@@ -259,24 +273,26 @@ async def forward(self: validator.Validator):
             if miner_scores:
                 rewarded_miner_ids = list(miner_scores.keys())
                 reward_scores = np.array(list(miner_scores.values()))
-                
+
                 # Burn 95% of rewards by allocating them to UID 0
                 current_sum = reward_scores.sum()
                 burn_value = 19 * current_sum
-                
+
                 # Add burn allocation to UID 0
                 reward_scores = np.concatenate(([burn_value], reward_scores))
                 rewarded_miner_ids = [0] + rewarded_miner_ids
-                
+
                 # Optional: Normalize to a specific total if needed
                 normalization_factor = 2000 / reward_scores.sum()
                 reward_scores = reward_scores * normalization_factor
-                
+
                 self.update_scores(reward_scores, rewarded_miner_ids)
                 bt.logging.info(
                     f"Updated scores for miners (95% burned to UID 0): keys: {rewarded_miner_ids}, values: {reward_scores.tolist()}"
                 )
-                bt.logging.info(f"Total rewards distributed: {reward_scores.sum()}, Burned: {burn_value}")
+                bt.logging.info(
+                    f"Total rewards distributed: {reward_scores.sum()}, Burned: {burn_value}"
+                )
 
             if processed_request_ids:
                 delete_requests(request_ids=processed_request_ids)
