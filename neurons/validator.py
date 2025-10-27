@@ -16,7 +16,6 @@ from BetterTherapy.base.validator import BaseValidatorNeuron
 # Bittensor Validator Template:
 from BetterTherapy.utils.wandb import SubnetEvaluationLogger
 from BetterTherapy.validator import forward
-from evals.eval import OpenAILLMAsJudgeEval
 from evals.batch import OpenAIBatchLLMAsJudgeEval
 
 
@@ -54,7 +53,6 @@ class Validator(BaseValidatorNeuron):
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set.")
-        self.evals = OpenAILLMAsJudgeEval(api_key=api_key, judge_model="gpt-4")
         self.evals_token_limit = 7000  # Excluding the buffer for system message, instructions, and formatting
 
     def setup_wandb(self):
