@@ -4,6 +4,8 @@ from typing import Dict, Optional
 import bittensor as bt
 import numpy as np
 
+from BetterTherapy.db.query import get_blacklisted_miners_hotkeys
+
 
 def check_uid_availability(
     metagraph: "bt.metagraph.Metagraph", uid: int, vpermit_tao_limit: int
@@ -35,6 +37,11 @@ def filter_uids(
     counts: Dict[str, int] = {}
     ip_counts: Dict[str, int] = {}
     ip_port_sets = set()
+    blacklisted_hotkeys = get_blacklisted_miners_hotkeys()
+    blacklisted_hotkeys_set = {t[0] for t in blacklisted_hotkeys}
+    bt.logging.info(
+        f"Blacklisted hotkeys: {blacklisted_hotkeys_set}, count: {len(blacklisted_hotkeys_set)}"
+    )
 
     for uid in range(bt_obj.metagraph.n.item()):
         ip_address = bt_obj.metagraph.axons[uid].ip
@@ -46,7 +53,7 @@ def filter_uids(
                 f"IP {ip_address} for uid {uid} has reached max_per_key: {max_per_key}"
             )
             continue
-        
+
         if ip_port in ip_port_sets:
             continue
         ip_port_sets.add(ip_port)
@@ -59,6 +66,9 @@ def filter_uids(
         hk = bt_obj.metagraph.hotkeys[uid]
 
         if blacklist and hk in blacklist:
+            continue
+
+        if blacklisted_hotkeys_set and hk in blacklisted_hotkeys_set:
             continue
 
         cnt = counts.get(ck, 0)
