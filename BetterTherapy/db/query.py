@@ -12,8 +12,7 @@ from sqlalchemy.dialects.sqlite import insert
 def get_ready_requests(session: Session, hours: int = 24) -> typing.List[Request]:
     """Get requests that are older than the specified number of hours."""
 
-    threshold = datetime.now(timezone.utc) - timedelta(minutes=16)
-    # threshold = datetime.now(timezone.utc) - timedelta(hours=hours)
+    threshold = datetime.now(timezone.utc) - timedelta(hours=hours)
     # attach responses to the requests
     return (
         session.query(Request)
