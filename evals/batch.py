@@ -111,7 +111,7 @@ class OpenAIBatchLLMAsJudgeEval:
             batch_metadata[custom_id] = ",".join(map(str, current_batch_miner_uids))
             request_number += 1
 
-        for i, (response, miner_uid) in enumerate(zip(responses, miner_uids)):
+        for response, miner_uid in zip(responses, miner_uids, strict=False):
             if not response.output:
                 continue
             response_token_count, individual_response = count_and_clip_tokens(
@@ -119,31 +119,34 @@ class OpenAIBatchLLMAsJudgeEval:
             )
 
             if request_number > max_request_per_batch:
-                all_batches.append((batch, batch_metadata))
+                if current_batch_responses:
+                    create_request()
+                if batch:
+                    all_batches.append((batch, batch_metadata))
                 batch = []
                 batch_metadata = {}
+                current_batch_responses = []
+                current_batch_miner_uids = []
+                current_token_count = 0
                 request_number = 1
 
-            is_last_loop = i == min(len(responses) - 1, len(miner_uids) - 1)
             if current_token_count + response_token_count > max_token_per_batch:
-                create_request()
-                if response_token_count:
-                    current_batch_miner_uids = [miner_uid]
-                    current_batch_responses = [individual_response]
-                else:
-                    current_batch_miner_uids = []
-                    current_batch_responses = []
-                current_token_count = 0
-
+                if current_batch_responses:
+                    create_request()
+                current_batch_responses = [individual_response]
+                current_batch_miner_uids = [miner_uid]
+                current_token_count = response_token_count
             else:
                 current_batch_miner_uids.append(miner_uid)
                 current_batch_responses.append(individual_response)
                 current_token_count += response_token_count
 
-            if is_last_loop and current_batch_responses:
-                create_request()
+        if current_batch_responses:
+            create_request()
 
-        all_batches.append((batch, batch_metadata))
+        if batch:
+            all_batches.append((batch, batch_metadata))
+
         return all_batches
 
     def queue_batch(self, batch: list[dict], batch_metadata: dict):

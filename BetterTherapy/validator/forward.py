@@ -16,7 +16,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import time
-from types import SimpleNamespace
 
 import bittensor as bt
 import numpy as np
@@ -68,8 +67,6 @@ async def forward(self: validator.Validator):
             except Exception as e:
                 bt.logging.error(f"Error posting to discord: {e}")
 
-        MAX_TOKENS_PER_RESPONSE = 400
-
         prompt = base_query_response.prompt
         base_response = base_query_response.response
         if not prompt or not base_response:
@@ -95,12 +92,12 @@ async def forward(self: validator.Validator):
         )
         if responses:
             batch_info = self.batch_evals.create_batch(
-                prompt,
-                base_response,
-                request_id,
-                responses,
-                MAX_TOKENS_PER_RESPONSE,
-                miner_uids.tolist(),
+                prompt=prompt,
+                base_response=base_response,
+                request_id=request_id,
+                responses=responses,
+                max_tokens_per_response=400,
+                miner_uids=miner_uids.tolist(),
             )
             bt.logging.info(f"Creating {len(batch_info)} batches")
             openai_batch_ids = []
