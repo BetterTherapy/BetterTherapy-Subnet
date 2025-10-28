@@ -5,10 +5,7 @@ from datetime import datetime
 
 # Bittensor
 import bittensor as bt
-import torch
 from dotenv import load_dotenv
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from ulid import api
 
 # import base validator class which takes care of most of the boilerplate
 from BetterTherapy.base.validator import BaseValidatorNeuron
