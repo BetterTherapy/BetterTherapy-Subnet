@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime, func
-from datetime import datetime
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.declarative import declared_attr
 
@@ -29,6 +28,19 @@ class Request(Base, TimestampMixin):
     responses = relationship(
         "MinerResponse", backref="request", cascade="all, delete-orphan"
     )
+
+
+class BlacklistedMiners(Base):
+    __tablename__ = "blacklisted_miners"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    miner_id = Column(Integer, nullable=False)
+    hotkey = Column(String, nullable=False, unique=True)
+    coldkey = Column(String, nullable=False)
+    blacklist_count = Column(Integer, default=1)
+    reason = Column(String, nullable=False)
+    created_at = Column(String)
+    updated_at = Column(String)
 
 
 class MinerResponse(Base, TimestampMixin):
