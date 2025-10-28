@@ -16,6 +16,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import time
+from types import SimpleNamespace
 
 import bittensor as bt
 import numpy as np
@@ -105,23 +106,27 @@ async def forward(self: validator.Validator):
             openai_batch_ids = []
             for i, (batch_requests, batch_metadata) in enumerate(batch_info):
                 bt.logging.info(f"Processing batch {i + 1}/{len(batch_info)}")
-                bt.logging.info("Batch requests: ", len(batch_requests))
-
+                bt.logging.info(f"Batch requests: {len(batch_requests)}")
+                if not batch_requests:
+                    bt.logging.info(f"Batch requests: {len(batch_requests)} is empty")
+                    continue
                 openai_batch_response = self.batch_evals.queue_batch(
                     batch=batch_requests, batch_metadata=batch_metadata
                 )
                 openai_batch_ids.append(openai_batch_response.id)
-
-            for batch_id in openai_batch_ids:
-                new_request = add_request(
-                    name=f"{request_id}_{batch_id}",  # Make unique names
-                    openai_batch_id=batch_id,
-                    prompt=prompt,
-                    base_response=base_response,
-                )
+            if openai_batch_ids:
+                for batch_id in openai_batch_ids:
+                    new_request = add_request(
+                        name=f"{request_id}_{batch_id}",  # Make unique names
+                        openai_batch_id=batch_id,
+                        prompt=prompt,
+                        base_response=base_response,
+                    )
 
             miner_responses = []
             for resp, miner_uid in zip(responses, miner_uids.tolist(), strict=False):
+                if not resp.output:
+                    continue
                 miner_responses.append(
                     MinerResponse(
                         request_id=new_request.id,
@@ -130,7 +135,8 @@ async def forward(self: validator.Validator):
                         response_time=resp.dendrite.process_time,
                     )
                 )
-            add_bulk_responses(responses=miner_responses)
+            if miner_responses:
+                add_bulk_responses(responses=miner_responses)
             update_base_prompt_response(base_prompt_response_id=base_query_response.id)
 
         ready_requests = get_ready_requests()
