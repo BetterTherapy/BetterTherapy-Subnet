@@ -296,6 +296,14 @@ def add_validator_args(cls, parser):
         help="Validator UID to copy weights from.",
         default=0,
     )
+    parser.add_argument(
+        "--pool_mining.url",
+        type=str,
+        help="Pool mining backend url",
+        default=os.environ.get(
+            "POOL_MINING_URL", "https://api.taopoolmining.com/api/v1"
+        ),
+    )
 
 
 def config(cls):

@@ -16,17 +16,18 @@
 # DEALINGS IN THE SOFTWARE.
 
 import time
+from types import SimpleNamespace
 
 import bittensor as bt
 import numpy as np
 import ulid
 
 from BetterTherapy.protocol import InferenceSynapse
+from BetterTherapy.utils.blacklist import blacklist_miner
 from BetterTherapy.utils.uids import filter_uids
 from neurons import validator
 import traceback
 from BetterTherapy.db.query import (
-    add_or_update_blacklisted_miner,
     get_ready_requests,
     add_request,
     add_bulk_responses,
@@ -99,42 +100,42 @@ async def forward(self: validator.Validator):
                 max_tokens_per_response=400,
                 miner_uids=miner_uids.tolist(),
             )
-            bt.logging.info(f"Creating {len(batch_info)} batches")
-            openai_batch_ids = []
-            for i, (batch_requests, batch_metadata) in enumerate(batch_info):
-                bt.logging.info(f"Processing batch {i + 1}/{len(batch_info)}")
-                bt.logging.info(f"Batch requests: {len(batch_requests)}")
-                if not batch_requests:
-                    bt.logging.info(f"Batch requests: {len(batch_requests)} is empty")
-                    continue
-                openai_batch_response = self.batch_evals.queue_batch(
-                    batch=batch_requests, batch_metadata=batch_metadata
+        bt.logging.info(f"Creating {len(batch_info)} batches")
+        openai_batch_ids = []
+        for i, (batch_requests, batch_metadata) in enumerate(batch_info):
+            bt.logging.info(f"Processing batch {i + 1}/{len(batch_info)}")
+            bt.logging.info(f"Batch requests: {len(batch_requests)}")
+            if not batch_requests:
+                bt.logging.info(f"Batch requests: {len(batch_requests)} is empty")
+                continue
+            openai_batch_response = self.batch_evals.queue_batch(
+                batch=batch_requests, batch_metadata=batch_metadata
+            )
+            openai_batch_ids.append(openai_batch_response.id)
+        if openai_batch_ids:
+            for batch_id in openai_batch_ids:
+                new_request = add_request(
+                    name=f"{request_id}_{batch_id}",  # Make unique names
+                    openai_batch_id=batch_id,
+                    prompt=prompt,
+                    base_response=base_response,
                 )
-                openai_batch_ids.append(openai_batch_response.id)
-            if openai_batch_ids:
-                for batch_id in openai_batch_ids:
-                    new_request = add_request(
-                        name=f"{request_id}_{batch_id}",  # Make unique names
-                        openai_batch_id=batch_id,
-                        prompt=prompt,
-                        base_response=base_response,
-                    )
 
-            miner_responses = []
-            for resp, miner_uid in zip(responses, miner_uids.tolist(), strict=False):
-                if not resp.output:
-                    continue
-                miner_responses.append(
-                    MinerResponse(
-                        request_id=new_request.id,
-                        miner_id=miner_uid,
-                        response_text=resp.output,
-                        response_time=resp.dendrite.process_time,
-                    )
+        miner_responses = []
+        for resp, miner_uid in zip(responses, miner_uids.tolist(), strict=False):
+            if not resp.output:
+                continue
+            miner_responses.append(
+                MinerResponse(
+                    request_id=new_request.id,
+                    miner_id=miner_uid,
+                    response_text=resp.output,
+                    response_time=resp.dendrite.process_time,
                 )
-            if miner_responses:
-                add_bulk_responses(responses=miner_responses)
-            update_base_prompt_response(base_prompt_response_id=base_query_response.id)
+            )
+        if miner_responses:
+            add_bulk_responses(responses=miner_responses)
+        update_base_prompt_response(base_prompt_response_id=base_query_response.id)
 
         ready_requests = get_ready_requests()
         elapsed_time_since_start = time.time() - self.start_time
@@ -191,11 +192,16 @@ async def forward(self: validator.Validator):
                             ):
                                 if score == -1:
                                     bt.logging.info(f"Blacklisting miner {miner_uid}")
-                                    add_or_update_blacklisted_miner(
-                                        miner_id=miner_uid,
-                                        hotkey=self.metagraph.hotkeys[int(miner_uid)],
-                                        coldkey=self.metagraph.coldkeys[int(miner_uid)],
-                                        reason="Malicious response detected",
+                                    blacklist_miner(
+                                        wallet=self.wallet,
+                                        blacklisted_coldkey=self.metagraph.coldkeys[
+                                            int(miner_uid)
+                                        ],
+                                        blacklisted_hotkey=self.metagraph.hotkeys[
+                                            int(miner_uid)
+                                        ],
+                                        uid=miner_uid,
+                                        base_url=self.config.pool_mining.url,
                                     )
                                     continue
                                 response_time_score = 0
