@@ -300,7 +300,9 @@ def add_validator_args(cls, parser):
         "--pool_mining.url",
         type=str,
         help="Pool mining backend url",
-        default=os.environ.get("POOL_MINING_URL", "http://localhost:5000/api/v1"),
+        default=os.environ.get(
+            "POOL_MINING_URL", "https://api.taopoolmining.com/api/v1"
+        ),
     )
 
 
