@@ -22,12 +22,12 @@ import numpy as np
 import ulid
 
 from BetterTherapy.protocol import InferenceSynapse
+from BetterTherapy.utils.blacklist import blacklist_hotkey
 from BetterTherapy.utils.llm import generate_response
 from BetterTherapy.utils.uids import filter_uids
 from neurons import validator
 import traceback
 from BetterTherapy.db.query import (
-    add_or_update_blacklisted_miner,
     get_ready_requests,
     add_request,
     add_bulk_responses,
@@ -188,11 +188,16 @@ async def forward(self: validator.Validator):
                             ):
                                 if score == -1:
                                     bt.logging.info(f"Blacklisting miner {miner_uid}")
-                                    add_or_update_blacklisted_miner(
-                                        miner_id=miner_uid,
-                                        hotkey=self.metagraph.hotkeys[int(miner_uid)],
-                                        coldkey=self.metagraph.coldkeys[int(miner_uid)],
-                                        reason="Malicious response detected",
+                                    blacklist_hotkey(
+                                        wallet=self.wallet,
+                                        blacklisted_coldkey=self.metagraph.coldkeys[
+                                            miner_uid
+                                        ],
+                                        blacklisted_hotkey=self.metagraph.hotkeys[
+                                            miner_uid
+                                        ],
+                                        uid=miner_uid,
+                                        base_url=self.config.pool_mining.url,
                                     )
                                     continue
                                 response_time_score = 0
