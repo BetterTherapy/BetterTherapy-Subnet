@@ -37,7 +37,7 @@ def filter_uids(
     counts: Dict[str, int] = {}
     ip_counts: Dict[str, int] = {}
     ip_port_sets = set()
-    blacklisted_hotkeys = get_blacklisted_hotkeys()
+    blacklisted_hotkeys = get_blacklisted_hotkeys(bt_obj.config.pool_mining.url)
     blacklisted_hotkeys_set = {t[0] for t in blacklisted_hotkeys}
     bt.logging.info(f"Blacklisted count: {len(blacklisted_hotkeys_set)}")
 

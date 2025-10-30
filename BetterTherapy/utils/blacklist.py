@@ -9,7 +9,6 @@ def compute_body_hash(instance_fields: dict):
     hashes = []
     required_hash_fields = ["hotkey", "coldkey", "uid", "uuid"]
     for field in required_hash_fields:
-        print(str(instance_fields[field]))
         hashes.append(get_hash(str(instance_fields[field])))
 
     return get_hash("".join(hashes))

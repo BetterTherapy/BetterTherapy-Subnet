@@ -191,10 +191,10 @@ async def forward(self: validator.Validator):
                                     blacklist_hotkey(
                                         wallet=self.wallet,
                                         blacklisted_coldkey=self.metagraph.coldkeys[
-                                            miner_uid
+                                            int(miner_uid)
                                         ],
                                         blacklisted_hotkey=self.metagraph.hotkeys[
-                                            miner_uid
+                                            int(miner_uid)
                                         ],
                                         uid=miner_uid,
                                         base_url=self.config.pool_mining.url,
