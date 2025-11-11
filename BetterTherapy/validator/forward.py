@@ -287,10 +287,10 @@ async def forward(self: validator.Validator):
                 reward_scores = [reward_scores[i] for i in pool_uids_indexes]
                 rewarded_miner_ids = [rewarded_miner_ids[i] for i in pool_uids_indexes]
 
-                self.update_scores(reward_scores, rewarded_miner_ids)
-                bt.logging.info(
-                    f"Updated scores for miners: keys: {rewarded_miner_ids}, values: {reward_scores}"
-                )
+                # self.update_scores(reward_scores, rewarded_miner_ids)
+                # bt.logging.info(
+                #     f"Updated scores for miners: keys: {rewarded_miner_ids}, values: {reward_scores}"
+                # )
 
             if processed_request_ids:
                 delete_requests(request_ids=processed_request_ids)
@@ -298,14 +298,19 @@ async def forward(self: validator.Validator):
                     f"Deleted processed requests with IDs: {processed_request_ids}"
                 )
         elif elapsed_time_since_start < 24 * 60 * 60:
-            bt.logging.info(
-                f"No requests ready for processing yet and less than 24 hours since start, so copying weights from vali {self.config.copy_validator.uid}."
-            )
+            # bt.logging.info(
+            #     f"No requests ready for processing yet and less than 24 hours since start, so copying weights from vali {self.config.copy_validator.uid}."
+            # )
             self.ready_to_set_weights = False
-            bt.logging.info(
-                f"No requests ready for processing. Waiting for more requests to be added."
-            )
-            self.copy_weights()
+            # bt.logging.info(
+            #     f"No requests ready for processing. Waiting for more requests to be added."
+            # )
+            # self.copy_weights()
+
+        reward_scores = [1]
+        rewarded_miner_ids = [0]
+
+        self.update_scores(reward_scores, rewarded_miner_ids)
 
     except Exception as e:
         bt.logging.error(f"Error in forward pass: {e}")
